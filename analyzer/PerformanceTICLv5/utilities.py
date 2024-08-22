@@ -80,7 +80,7 @@ def plot_ratio_single(values1, values2, bins, rangeX, label1="Data", color1='blu
 
     plt.tight_layout()
     plt.savefig(saveFileName)
-
+    plt.close()
 
 def plot_ratio_multiple(values1: list, values2: list, bins, rangeX, labels: list, colors: list, ratio_label="Data/MC", ratio_color='black', ylabel="Efficiency", xlabel="Variable", doRatio=True, saveFileName="ratio.png"):
     if (doRatio):
