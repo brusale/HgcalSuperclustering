@@ -4,7 +4,37 @@ from typing import Literal
 import awkward as ak
 import pandas as pd
 
+def assocs_zip_recoToSimLayerClusters(assocs_unzipped:ak.Array, simVariant:Literal["CP", "SC"]="CP") -> ak.Array:
+    if simVariant == "CP":
+        return ak.zip({
+            "cluster_id":ak.local_index(assocs_unzipped.lc_recoToSim_CP, axis=1),
+            "caloparticle_id":assocs_unzipped.lc_recoToSim_CP,
+            "score":assocs_unzipped.lc_recoToSim_CP_score,
+            "sharedE":assocs_unzipped.lc_recoToSim_CP_shared})
+    elif simVariant == "SC":
+        return ak.zip({
+            "cluster_id":ak.local_index(assocs_unzipped.lc_recoToSim_SC, axis=1),
+            "simcluster_id":assocs_unzipped.lc_recoToSim_SC,
+            "score":assocs_unzipped.lc_recoToSim_SC_score})
+            #"sharedE":assocs_unzipped.lc_recoToSim_SC_shared})
+    else:
+        raise ValueError("CP or SC")
 
+def assocs_zip_simToRecoLayerClusters(assocs_unzipped:ak.Array, simVariant:Literal["CP", "SC"]="CP") -> ak.Array:
+    if simVariant == "CP":
+        return ak.zip({
+            "caloparticle_id":ak.local_index(assocs_unzipped.lc_simToReco_CP, axis=1),
+            "cluster_id":assocs_unzipped.lc_simToReco_CP,
+            "score":assocs_unzipped.lc_simToReco_CP_score,
+            "sharedE":assocs_unzipped.lc_simToReco_CP_shared})              
+    elif simVariant == "SC":
+        return ak.zip({
+            "caloparticle_id":ak.local_index(assocs_unzipped.lc_simToReco_SC, axis=1),
+            "cluster_id":assocs_unzipped.lc_simToReco_SC,
+            "score":assocs_unzipped.lc_simToReco_SC_score,
+            "sharedE":assocs_unzipped.lc_simToReco_SC_shared})
+    else:
+        raise ValueError("CP or SC")
 
 def assocs_zip_recoToSim(assocs_unzipped:ak.Array, simVariant:Literal["CP", "SC"]="CP") -> ak.Array:
     """ Zip associations array into records
@@ -28,10 +58,10 @@ def assocs_zip_recoToSim(assocs_unzipped:ak.Array, simVariant:Literal["CP", "SC"
     """
     if simVariant == "CP":
         return ak.zip({
-            "ts_id":ak.local_index(assocs_unzipped.tsCLUE3D_recoToSim_CP, axis=1),
-            "caloparticle_id":assocs_unzipped.tsCLUE3D_recoToSim_CP,
-            "score":assocs_unzipped.tsCLUE3D_recoToSim_CP_score,
-            "sharedE":assocs_unzipped.tsCLUE3D_recoToSim_CP_sharedE})  
+            "ts_id":ak.local_index(assocs_unzipped.tsToStsByLC_recoToSim_CP, axis=1),
+            "caloparticle_id":assocs_unzipped.tsToStsByLC_recoToSim_CP,
+            "score":assocs_unzipped.tsToStsByLC_recoToSim_CP_score,
+            "sharedE":assocs_unzipped.tsToStsByLC_recoToSim_CP_sharedE})  
     elif simVariant == "SC":
         return ak.zip({
             "ts_id":ak.local_index(assocs_unzipped.tsCLUE3D_recoToSim_SC, axis=1),
@@ -62,10 +92,10 @@ def assocs_zip_simToReco(assocs_unzipped:ak.Array, simVariant:Literal["CP", "SC"
     """
     if simVariant == "CP":
         return ak.zip({
-            "caloparticle_id":ak.local_index(assocs_unzipped.tsCLUE3D_simToReco_CP, axis=1),
-            "ts_id":assocs_unzipped.tsCLUE3D_simToReco_CP,
-            "score":assocs_unzipped.tsCLUE3D_simToReco_CP_score,
-            "sharedE":assocs_unzipped.tsCLUE3D_simToReco_CP_sharedE})
+            "caloparticle_id":ak.local_index(assocs_unzipped.tsToStsByLC_simToReco_CP, axis=1),
+            "ts_id":assocs_unzipped.tsToStsByLC_simToReco_CP,
+            "score":assocs_unzipped.tsToStsByLC_simToReco_CP_score,
+            "sharedE":assocs_unzipped.tsToStsByLC_simToReco_CP_sharedE})
     elif simVariant == "SC":
         return ak.zip({
             "simcluster_id":ak.local_index(assocs_unzipped.tsCLUE3D_simToReco_SC, axis=1),
@@ -177,7 +207,6 @@ def assocs_bestScore(assocs_zipped:ak.Array) -> ak.Array:
     # Take the first assoc, putting None in case a trackster has no assocation
     # Then drop the None
     return ak.drop_none(ak.firsts(assocs_zipped[idx_sort], axis=-1), axis=-1)
-    
 
 def assocs_toDf(assocs_zipped:ak.Array, score_threshold=0.5) -> pd.DataFrame:
     """ Makes a pandas dataframe of associations

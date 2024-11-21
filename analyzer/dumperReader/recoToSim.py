@@ -3,6 +3,7 @@ import pandas as pd
 from typing import Union
 
 from .tracksters import supercluster_joinTracksters, _convertTsToDataframe
+from .clusters import _convertLcToDataframe
 from .assocs import assocs_bestScore, assocs_zip_recoToSim
 
 
@@ -23,3 +24,6 @@ def TracksterToCPProperties(assocs_bestScore_recoToSim_df:pd.DataFrame, trackste
      - tracksters : dataframe (or zipped akward array) of tracksters with properties to keep
     """
     return (assocs_bestScore_recoToSim_df.join(_convertTsToDataframe(tracksters), on=["eventInternal", "ts_id"]).join(simTrackstersCP_df, rsuffix="_CP"))
+
+def LayerClusterToCPProperties(assocs_bestScore_recoToSim_df:pd.DataFrame, clusters:Union[ak.Array, pd.DataFrame], caloparticles_df:pd.DataFrame):
+    return (assocs_bestScore_recoToSim_df.join(_convertLcToDataframe(clusters), on=["eventInternal", "cluster_id"]).join(clustersCP_df))

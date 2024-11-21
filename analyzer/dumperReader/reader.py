@@ -8,6 +8,7 @@ import uproot
 
 from .assocs import *
 from .tracksters import *
+from .clusters import *
 from .recoToSim import *
 from .simToReco import *
 
@@ -16,28 +17,29 @@ from typing import List
 import awkward as ak
 print(ak.__version__)
 
-def superclustersToEnergy(supercls_ts_idxs:ak.Array, tracksters:ak.Array) -> ak.Array:
-    """ Computes the total energy of a supercluster from an array of supercluster ids 
+
+def superclustersToEnergy(supercls_ts_idxs: ak.Array, tracksters: ak.Array) -> ak.Array:
+    """ Computes the total energy of a supercluster from an array of supercluster ids
     Preserves the inner index (usually CP id)
     Parameters :
      - supercls_ts_idxs : type nevts * var * var * uint64
     Returns : type nevts * var * float (energy sum)
     """
     # FIrst flatten the inner dimension (CP id) before taking tracksters
-    energies_flat = tracksters.raw_energy[ak.flatten(supercls_ts_idxs, axis=-1)]
+    energies_flat = tracksters.raw_energy[ak.flatten(
+        supercls_ts_idxs, axis=-1)]
     # Rebuild the inner index
-    energies = ak.unflatten(energies_flat,  ak.flatten(ak.num(supercls_ts_idxs, axis=-1)), axis=-1)
+    energies = ak.unflatten(energies_flat,  ak.flatten(
+        ak.num(supercls_ts_idxs, axis=-1)), axis=-1)
 
     return ak.sum(energies, axis=-1)
 
 
-
-    
 class DumperReader:
     class MultiFileReader:
-        def __init__(self, files:list[uproot.ReadOnlyDirectory]):
+        def __init__(self, files: list[uproot.ReadOnlyDirectory]):
             self.files = files
-        
+
         def __getitem__(self, key):
             excpts = []
             for file in self.files:
@@ -46,32 +48,49 @@ class DumperReader:
                 except uproot.KeyInFileError as e:
                     excpts.append(e)
             raise KeyError(*excpts)
-            
+
     def __init__(self, file: Union[str, uproot.ReadOnlyDirectory, List[uproot.ReadOnlyDirectory]], directoryName: str = "ticlDumper") -> None:
         try:
             self.fileDir = file[directoryName]
         except TypeError:
             try:
-                self.fileDir = self.MultiFileReader([f[directoryName] for f in file])
+                self.fileDir = self.MultiFileReader(
+                    [f[directoryName] for f in file])
             except TypeError:
                 self.fileDir = uproot.open(file + ":" + directoryName)
-    
+
     @property
     def nEvents(self):
-        return self.fileDir["tracksters"].num_entries
+        return self.fileDir["ticlBarrelTracksters"].num_entries
+
+    @cached_property
+    def clusters(self) -> ak.Array:
+        return self.fileDir["clusters"].arrays()
+
+    @cached_property
+    def clusters_zipped(self) -> ak.Array:
+        return ak.zip({"cluster_id": ak.local_index(self.clusters.energy, axis=1)} |
+                      {key: self.clusters[key]
+                          for key in self.clusters.fields},
+                      depth_limit=1,
+                      with_name="clusters"
+                      )
 
     @cached_property
     def tracksters(self) -> ak.Array:
-        return self.fileDir["tracksters"].arrays()
-    
+        return self.fileDir["ticlBarrelTracksters"].arrays()
+
+
     @cached_property
     def tracksters_zipped(self) -> ak.Array:
-        return ak.zip({"ts_id" : ak.local_index(self.tracksters.raw_energy, axis=1)} | 
-                      {key : self.tracksters[key] for key in self.tracksters.fields 
-                        if key not in ["vertices_multiplicity","event", "NClusters", "NTracksters"]},
+        return ak.zip({"ts_id": ak.local_index(self.tracksters.raw_energy, axis=1)} |
+                      {key: self.tracksters[key] for key in self.tracksters.fields
+                        if key not in ['event_', 'vertices_multiplicity','NTracksters', 'NClusters']}
+,
             depth_limit=2, # don't try to zip vertices
-            with_name="tracksters"
+            with_name="ticlBarrelTracksters"
         )
+
     @cached_property
     def trackstersMerged(self) -> ak.Array:
         return self.fileDir["trackstersMerged"].arrays()
@@ -79,52 +98,64 @@ class DumperReader:
     @cached_property
     def trackstersMerged_zipped(self) -> ak.Array:
         # Create the base dictionary
-        base_dict = {"ts_id": ak.local_index(self.trackstersMerged.raw_energy, axis=1)}
+        base_dict= {"ts_id": ak.local_index(
+        self.trackstersMerged.raw_energy, axis=1)}
         # Update the base dictionary with the other fields
-        base_dict.update({key: self.trackstersMerged[key] for key in self.trackstersMerged.fields 
-                          if key not in ["vertices_multiplicity", "event", "NClusters", "NTracksters"]})
+        base_dict.update({key: self.trackstersMerged[key] for key in self.trackstersMerged.fields
+                           if key not in ["vertices_multiplicity",
+                                          "event",
+                                          "NClusters",
+                                          "NTracksters"]})
         return ak.zip(
-            base_dict,
-            depth_limit=2,  # don't try to zip vertices
-            with_name="trackstersMerged"
-        ) 
+        base_dict,
+        depth_limit = 2,  # don't try to zip vertices
+        with_name = "trackstersMerged"
+        )
+
+    @cached_property
+    def caloparticles(self) -> ak.Array:
+        return self.fileDir["caloparticles"].arrays(filter_name=["event", "caloparticle_energy", "caloparticle_et", "caloparticle_pt", "caloparticle_eta", "caloparticle_phi"])
+
+    @cached_property
+    def caloparticles_df(self) -> pd.DataFrame:
+        return ak.to_dataframe(self.caloparticles, levelname=lambda x: {0: "eventInternal", 1: "caloparticle_id"}[x])
 
     @cached_property
     def simTrackstersCP(self) -> ak.Array:
-        return self.fileDir["simtrackstersCP"].arrays(filter_name=["event_", "raw_energy", "raw_energy_em", "regressed_energy", "barycenter_*"])
+        return self.fileDir["simtrackstersCP"].arrays(filter_name=["event_", "raw_energy", "raw_energy_em", "regressed_energy", "barycenter_*", "n_vertices", "min_layer", "max_layer", "span"])
+
     @cached_property
     def simTrackstersCP_df(self) -> pd.DataFrame:
-        return ak.to_dataframe(self.simTrackstersCP, levelname=lambda x : {0:"eventInternal", 1:"caloparticle_id"}[x])
-    
+        return ak.to_dataframe(self.simTrackstersCP, levelname=lambda x: {0: "eventInternal", 1: "caloparticle_id"}[x])
+
     @cached_property
     def superclusters(self) -> ak.Array:
         """ Gets the supercluster trackster ids (since ticlv5 this actually includes also tracksters in one-trackster superclusters)
         type: nevts * var (superclsCount) * var (trackstersInSupercls) * uint64 (trackster id)
         """
         return self.fileDir["superclustering/linkedResultTracksters"].array()
-    
+
     @cached_property
     def superclusters_all(self) -> ak.Array:
         """ Supercluster tracksters ids. Tracksters not in a supercluster are included in a one-trackster supercluster each
         Since ticlv5 this is actually identical to superclusters
         """
-        #return self.fileDir["superclustering/superclusteredTrackstersAll"].array()
+        # return self.fileDir["superclustering/superclusteredTrackstersAll"].array()
         return self.fileDir["superclustering/linkedResultTracksters"].array()
 
     @cached_property
     def superclusteringDnnScore(self) -> ak.Array:
-        ar =  self.fileDir["superclustering/superclusteringDNNScore"].array()
-        return ak.zip({"ts_seed":ar["superclusteringDNNScore._0"], "ts_cand":ar["superclusteringDNNScore._1"], "dnnScore":ak.values_astype(ar["superclusteringDNNScore._2"], np.single)/65535.}, with_name="dnnInferencePair")
+        ar = self.fileDir["superclustering/superclusteringDNNScore"].array()
+        return ak.zip({"ts_seed": ar["superclusteringDNNScore._0"], "ts_cand": ar["superclusteringDNNScore._1"], "dnnScore": ak.values_astype(ar["superclusteringDNNScore._2"], np.single)/65535.}, with_name="dnnInferencePair")
 
     @cached_property
     def associations(self) -> ak.Array:
-        return self.fileDir["associations"].arrays(filter_name=["event_", "tsCLUE3D_*", 'Mergetracksters_*', 'Mergetstracksters_*'])
-    
-    
+        return self.fileDir["associations"].arrays(filter_name=["event_", "ts*", 'Mergetracksters_*', 'Mergetstracksters_*', 'lc_*', 'ticlBarrelTracksters_*'])
+
     @cached_property
     def supercluster_df(self) -> pd.DataFrame:
         return ak.to_dataframe(self.superclusters, anonymous="ts_id",
-            levelname=lambda x : {0:"eventInternal", 1:"supercls_id", 2:"ts_in_supercls_id"}[x])
+                               levelname = lambda x: {0: "eventInternal", 1: "supercls_id", 2: "ts_in_supercls_id"}[x])
 
     @cached_property
     def supercluster_all_df(self) -> pd.DataFrame:
@@ -133,108 +164,157 @@ class DumperReader:
         return self.supercluster_df
         # return ak.to_dataframe(self.superclusters_all, anonymous="ts_id",
         #     levelname=lambda x : {0:"eventInternal", 1:"supercls_id", 2:"ts_in_supercls_id"}[x])
-    
+
     @cached_property
     def supercluster_merged_properties_all(self) -> pd.DataFrame:
         """ Dataframe holding supercluster properties (one row per supercluster) 
-        
+
         Tracksters not in a supercluster are included as one-trackster superclusters
         """
         return (supercluster_joinTracksters(self.supercluster_all_df, self.tracksters_zipped[["raw_energy", "regressed_energy"]])
                 .groupby(level=["eventInternal", "supercls_id"])
                 .agg(
                     raw_energy_supercls=pd.NamedAgg("raw_energy", "sum"),
-                    regressed_energy_supercls=pd.NamedAgg("regressed_energy", "sum"),
-        ))
-    
+                    regressed_energy_supercls=pd.NamedAgg(
+                        "regressed_energy", "sum"),
+                    ))
+
+    @cached_property
+    def assocs_bestScore_simToRecoLayerClusters_df(self) -> pd.DataFrame:
+        """ Make a Df of largest score associations of each LayerCluster
+
+        Index eventInternal     lc_id, column : caloparticle_id
+        """
+        # Get largest association score
+        assocs_simToReco_largestScore= assocs_bestScore(
+            assocs_zip_simToRecoLayerClusters(self.associations))
+            # Make a df out of it : index eventInternal     lc_id, column : caloparticle_id
+        return (ak.to_dataframe(assocs_simToReco_largestScore[["cluster_id", "caloparticle_id", "score", "sharedE"]],
+                                levelname=lambda x: {0: "eventInternal", 1: "caloparticle_id_wrong"}[x])
+               .reset_index("caloparticle_id_wrong", drop=True)
+                .set_index("caloparticle_id", append=True)
+                )
+
+    @cached_property
+    def assocs_bestScore_recoToSimLayerClusters_df(self, dropOnes=True) -> pd.DataFrame:
+        """ Make a Df of largest score associations of each LayerCluster
+
+        Index eventInternal     caloparticle_id, column : ts_id, score, sharedE
+        """
+        # Get largest association score
+        assocs = assocs_bestScore((assocs_dropOnes if dropOnes else lambda x: x)(assocs_zip_recoToSimLayerClusters(self.associations)))
+        return (ak.to_dataframe(assocs[["cluster_id", "caloparticle_id", "score", "sharedE"]],
+                                levelname=lambda x: {0: "eventInternal", 1: "cluster_id_wrong"}[x])
+                               .reset_index("cluster_id_wrong", drop=True)
+                               .set_index("cluster_id", append=True))
+
+
     @cached_property
     def assocs_bestScore_simToReco_df(self) -> pd.DataFrame:
-        """ Make a Df of largest score associations of each SimTrackster 
-        
-        Index eventInternal	ts_id, column : caloparticle_id
+        """Make a Df of largest score associations of each SimTrackster 
+
+         Index eventInternal	ts_id, column : caloparticle_id
         """
         # Get largest association score
         assocs_simToReco_largestScore = assocs_bestScore(assocs_zip_simToReco(self.associations))
         # Make a df out of it : index eventInternal	ts_id, column : caloparticle_id
-        return  (ak.to_dataframe(assocs_simToReco_largestScore[["ts_id", "caloparticle_id", "score", "sharedE"]], 
-                                levelname=lambda x : {0:"eventInternal", 1:"caloparticle_id_wrong"}[x])
-                .reset_index("caloparticle_id_wrong", drop=True)
-                .set_index("caloparticle_id", append=True)
+        return (ak.to_dataframe(assocs_simToReco_largestScore[["ts_id", "caloparticle_id", "score", "sharedE"]],
+                                levelname=lambda x: {0: "eventInternal", 1: "caloparticle_id_wrong"}[x])
+               .reset_index("caloparticle_id_wrong", drop=True)
+               .set_index("caloparticle_id", append=True)
         )
-    
+
+    @cached_property
     def assocs_bestScore_recoToSim_df(self, dropOnes=True) -> pd.DataFrame:
         """ Make a Df of largest score associations of each Trackster 
-        
+
         Parameters : 
          - dropOnes : if True, do not include associations of score 1 (worst score)
         Index eventInternal	caloparticle_id, column : ts_id, score, sharedE
         """
         # Get largest association score
-        assocs = assocs_bestScore((assocs_dropOnes if dropOnes else lambda x:x)(assocs_zip_recoToSim(self.associations)))
+        assocs = assocs_bestScore((assocs_dropOnes if dropOnes else lambda x: x)(assocs_zip_recoToSim(self.associations)))
         # Make a df out of it : index eventInternal	ts_id, column : caloparticle_id
-        return (ak.to_dataframe(assocs[["ts_id", "caloparticle_id", "score", "sharedE"]], 
-                                levelname=lambda x : {0:"eventInternal", 1:"ts_id_wrong"}[x])
+        return (ak.to_dataframe(assocs[["ts_id", "caloparticle_id", "score", "sharedE"]],
+                                levelname=lambda x: {0: "eventInternal", 1: "ts_id_wrong"}[x])
                 .reset_index("ts_id_wrong", drop=True)
                 .set_index("ts_id", append=True)
-        )
-        
+                )
+
     @cached_property
     def assocs_bestScore_simToRecoMerged_df(self) -> pd.DataFrame:
         """ Make a Df of largest score associations of each SimTrackster 
-        
-        Index eventInternal	ts_id, column : caloparticle_id
+
+            Index eventInternal	ts_id, column : caloparticle_id
         """
         # Get largest association score
         assocs_simToReco_largestScore = assocs_bestScore(assocs_zip_simToRecoMerged(self.associations))
         # Make a df out of it : index eventInternal	ts_id, column : caloparticle_id
-        return  (ak.to_dataframe(assocs_simToReco_largestScore[["ts_id", "caloparticle_id", "score", "sharedE"]], 
-                                levelname=lambda x : {0:"eventInternal", 1:"caloparticle_id_wrong"}[x])
-                .reset_index("caloparticle_id_wrong", drop=True)
-                .set_index("caloparticle_id", append=True)
+        return (ak.to_dataframe(assocs_simToReco_largestScore[["ts_id", "caloparticle_id", "score", "sharedE"]],
+                                levelname=lambda x: {0: "eventInternal", 1: "caloparticle_id_wrong"}[x])
+               .reset_index("caloparticle_id_wrong", drop=True)
+               .set_index("caloparticle_id", append=True)
         )
-
     @cached_property
-    def assocs_bestScore_simToRecoShared_df(self) -> pd.DataFrame:
-        """Make a DataFrame of associations of each SimTrackster with shared energy > 0.
-        
-        Index: eventInternal, ts_id
-        Columns: caloparticle_id
-        """
-        # Get associations where sharedE > 0
-        assocs_simToReco_sharedE = assocs_zip_simToReco(self.associations)
-        
+    def assocs_bestScore_simToRecoSharedLayerClusters_df(self) -> pd.DataFrame:
+        assocs_simToReco_sharedE = assocs_zip_simToRecoLayerClusters(self.associations)
         assocs_simToReco_sharedE = assocs_simToReco_sharedE[assocs_simToReco_sharedE["sharedE"] > 0]
 
-        # Make a DataFrame out of it: index eventInternal, ts_id; columns: caloparticle_id
-        print(assocs_simToReco_sharedE)
         def levelname(x):
             names = ["eventInternal", "caloparticle_id_wrong"] + [f"level_{i}" for i in range(x - 2)]
             return names[x] if x < len(names) else f"level_{x}"
         return (
-            ak.to_dataframe(assocs_simToReco_sharedE[["ts_id", "caloparticle_id", "score", "sharedE"]],
+            ak.to_dataframe(assocs_simToReco_sharedE[["cluster_id", "caloparticle_id", "score", "sharedE"]],
                             levelname=levelname)
             .reset_index("caloparticle_id_wrong", drop=True)
             .set_index("caloparticle_id", append=True)
         )
 
-    
+    @cached_property
+    def assocs_bestScore_simToRecoShared_df(self) -> pd.DataFrame:
+        """Make a DataFrame of associations of each SimTrackster with shared energy > 0.
+
+        Index: eventInternal, ts_id
+        Columns: caloparticle_id
+        """
+        # Get associations where sharedE > 0
+        assocs_simToReco_sharedE= assocs_zip_simToReco(self.associations)
+
+        assocs_simToReco_sharedE= assocs_simToReco_sharedE[assocs_simToReco_sharedE["sharedE"] > 0]
+
+        # Make a DataFrame out of it: index eventInternal, ts_id; columns: caloparticle_id
+
+        def levelname(x):
+            names = ["eventInternal", "caloparticle_id_wrong"] + [f"level_{i}" for i in range(x - 2)]
+            return names[x] if x < len(names) else f"level_{x}"
+        return (
+           ak.to_dataframe(assocs_simToReco_sharedE[["ts_id", "caloparticle_id", "score", "sharedE"]],
+                            levelname=levelname)
+            .reset_index("caloparticle_id_wrong", drop=True)
+            .set_index("caloparticle_id", append=True)
+        )
+    @cached_property
     def assocs_bestScore_recoMergedToSim_df(self, dropOnes=True) -> pd.DataFrame:
         """ Make a Df of largest score associations of each Trackster 
-        
+
         Parameters : 
          - dropOnes : if True, do not include associations of score 1 (worst score)
         Index eventInternal	caloparticle_id, column : ts_id, score, sharedE
         """
         # Get largest association score
-        assocs = assocs_bestScore((assocs_dropOnes if dropOnes else lambda x:x)(assocs_zip_recoMergedToSim(self.associations)))
+        assocs= assocs_bestScore((assocs_dropOnes if dropOnes else lambda x: x)(
+            assocs_zip_recoMergedToSim(self.associations)))
         # Make a df out of it : index eventInternal	ts_id, column : caloparticle_id
-        return (ak.to_dataframe(assocs[["ts_id", "caloparticle_id", "score", "sharedE"]], 
-                                levelname=lambda x : {0:"eventInternal", 1:"ts_id_wrong"}[x])
-                .reset_index("ts_id_wrong", drop=True)
+        return (ak.to_dataframe(assocs[["ts_id", "caloparticle_id", "score", "sharedE"]],
+                                levelname=lambda x: {0: "eventInternal", 1: "ts_id_wrong"}[x])
+               .reset_index("ts_id_wrong", drop=True)
                 .set_index("ts_id", append=True)
-        )
+                )
+
+
 class Step3Reader:
     """ Reads step3 split EDM files """
+
     def __init__(self, file: Union[str, uproot.ReadOnlyDirectory]) -> None:
         try:
             self.eventsTree = file["Events"]
@@ -243,21 +323,21 @@ class Step3Reader:
             self.file = uproot.open(file)
             self.eventsTree = self.file["Events"]
 
-
 class FWLiteDataframesReader:
     """ Reads pandas dataframe made by the FWLite step3 -> pandas dumper """
-    def __init__(self, folder:str, sampleNb:int, readerForEventMapping:DumperReader) -> None:
+
+    def __init__(self, folder: str, sampleNb: int, readerForEventMapping: DumperReader) -> None:
         self.folder = folder
         self.sampleNb = sampleNb
-        self.eventMapping = ak.to_dataframe(readerForEventMapping.tracksters.event_, levelname=lambda x:"eventInternal", anonymous="event_").reset_index()
+        self.eventMapping = ak.to_dataframe(readerForEventMapping.tracksters.event_, levelname =lambda x: "eventInternal", anonymous="event_").reset_index()
         """ Dataframe mapping eventInternal (the index into the TICLDumper file) and the actual CMS event number (event_) """
-    
-    def readDataframe(self, name:str) -> pd.DataFrame:
+
+    def readDataframe(self, name: str) -> pd.DataFrame:
         return pd.read_pickle(Path(self.folder) / f"{name}_{self.sampleNb}.pkl.gz")
-    
+
     @cached_property
     def supercls(self) -> pd.DataFrame:
-        return pd.merge(self.readDataframe("supercls"), self.eventMapping, on="event_").set_index(["eventInternal", "supercls_id", "ts_in_supercls_id"])
+            return pd.merge(self.readDataframe("supercls"), self.eventMapping, on="event_").set_index(["eventInternal", "supercls_id", "ts_in_supercls_id"])
 
-#ticlTracksters_ticlTracksterLinksSuperclustering_CLUE3D_RECO./ticlTracksters_ticlTracksterLinksSuperclustering_CLUE3D_RECO.obj/ticlTracksters_ticlTracksterLinksSuperclustering_CLUE3D_RECO.obj.regressed_energy_
+            # ticlTracksters_ticlTracksterLinksSuperclustering_CLUE3D_RECO./ticlTracksters_ticlTracksterLinksSuperclustering_CLUE3D_RECO.obj/ticlTracksters_ticlTracksterLinksSuperclustering_CLUE3D_RECO.obj.regressed_energy_
 

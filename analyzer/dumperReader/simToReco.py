@@ -2,8 +2,9 @@ import awkward as ak
 import pandas as pd
 from typing import Union
 
-from .assocs import assocs_bestScore, assocs_zip_simToReco
+from .assocs import assocs_bestScore, assocs_zip_simToReco, assocs_zip_simToRecoLayerClusters
 from .tracksters import trackster_joinSupercluster, tracksters_groupBy, _convertTsToDataframe
+from .clusters import _convertLcToDataframe
 
 def superclusterAssociatedToSimTracksterCP(supercls:ak.Array, associations:ak.Array) -> ak.Array:
     """ Returns the supercluster ids corresponding to the CaloParticle for each event (from the simTracksterCP collection) 
@@ -33,6 +34,11 @@ def superclusterAssociatedToSimTracksterCP(supercls:ak.Array, associations:ak.Ar
     # transform back to awkward array
     return ak.unflatten(ak.from_numpy(merged_df.supercls_id.to_numpy()), ak.run_lengths(ak.from_numpy(merged_df.index.to_numpy())))
 
+def CPToLayerClusterProperties(assocs_bestScore_simToReco_df:pd.DataFrame, clusters:Union[ak.Array, pd.DataFrame], caloParticles_df:pd.DataFrame):
+    return (assocs_bestScore_simToReco_df
+        .join(_convertLcToDataframe(clusters), on=["eventInternal", "cluster_id"])
+        .join(caloParticles_df, rsuffix="_CP")
+    )
 
 def CPToTracksterProperties(assocs_bestScore_simToReco_df:pd.DataFrame, tracksters:Union[ak.Array, pd.DataFrame], simTrackstersCP_df:pd.DataFrame):
     """ For each CaloParticle, get the best associated trackster properties
