@@ -16,7 +16,7 @@ from seaborn import regplot
 from analyzer.dumperReader.reader import *
 from analyzer.driver.fileTools import *
 from analyzer.driver.computations import *
-from analyzer.computations.tracksters import tracksters_seedProperties, CPtoTrackster_properties, CPtoTracksterMerged_properties, CPtoTracksterAllShared_properties, TrackstertoCP_properties
+from analyzer.computations.tracksters import CPtoTracksterMerged_properties, MergedTrackstertoCP_properties
 from analyzer.computations.clusters import CPtoLayerCluster_properties, LayerClustertoCP_properties, CPtoLayerClusterAllShared_properties
 from analyzer.energy_resolution.fit import *
 import os
@@ -46,16 +46,16 @@ args = parser.parse_args()
 #fileC2D = "data150X/CloseByPhoton200PU/dataC3D/"
 #filePF = "data150X/CloseByPhoton200PU/dataPF/"
 
-fileV5 = "data151X/CloseByPion200PU/"
-fileV3 = "data151X/CloseByPion200PU/"
-fileC2D = "data151X/CloseByPion200PU/"
-filePF = "data151X/CloseByPion200PU/"
+fileV5 = "data151X/CloseByPion0PU/"
+fileV3 = "data151X/CloseByPion0PU/"
+fileC2D = "data151X/CloseByPion0PU/"
+filePF = "data151X/CloseByPion0PU/"
 
 
 #filePF = "data/CloseByPhoton200PU_PF/dataPF/"
 #fileC2D = "data/CloseByPhoton200PU_PF/dataC2D/"
 
-OutputDir = "CloseByPion200PU_151X/"
+OutputDir = "CloseByPion0PU_151X_linking/"
 create_directory(OutputDir)
 if not args.cache:
     dumperInputV5 = DumperInputManager([
@@ -82,21 +82,13 @@ if not args.cache:
         limitFileCount=5,
         )
     
-    resV5 = runComputations([CPtoTrackster_properties, CPtoTracksterAllShared_properties], dumperInputV5, max_workers=10)
-    resV3 = runComputations([CPtoTrackster_properties, CPtoTracksterAllShared_properties], dumperInputV3, max_workers=10)
+    resV5 = runComputations([CPtoTracksterMerged_properties], dumperInputV5, max_workers=10)
+    resV3 = runComputations([CPtoTracksterMerged_properties], dumperInputV3, max_workers=10)
     
-    recoToSimV5 = runComputations([TrackstertoCP_properties], dumperInputV5, max_workers=10)
-    recoToSimV3 = runComputations([TrackstertoCP_properties], dumperInputV3, max_workers=10)
+    recoToSimV5 = runComputations([MergedTrackstertoCP_properties], dumperInputV5, max_workers=10)
+    recoToSimV3 = runComputations([MergedTrackstertoCP_properties], dumperInputV3, max_workers=10)
     
-    simToRecoV5LC = runComputations([CPtoLayerCluster_properties, CPtoLayerClusterAllShared_properties], dumperInputLC, max_workers=10)
-    simToRecoV3PF = runComputations([CPtoLayerCluster_properties, CPtoLayerClusterAllShared_properties], dumperInputPF, max_workers=10)
     
-    mergedLC = simToRecoV5LC[0]
-    mergedPF = simToRecoV3PF[0]
-    
-    mergedLC = mergedLC[mergedLC['score'] >= 1e-4]
-    #print(mergedLC)
-    #print(simToRecoV5LC[1])
     
     mergedV5 = resV5[0]
     #mergedV5 = mergedV5[mergedV5['score'] <= 0.1]
@@ -113,8 +105,6 @@ if not args.cache:
     mergedV3.to_pickle('cache/CloseByPhoton200PU_FastJet_simToReco.pkl')
     mergedR2SV5.to_pickle('cache/CloseByPhoton200PU_CLUE3D_recoToSim.pkl')
     mergedR2SV3.to_pickle('cache/CloseByPhoton200PU_FastJet_recoToSim.pkl')
-    mergedLC.to_pickle('cache/CloseByPhoton200PU_CLUE2D_simToReco.pkl')
-    mergedPF.to_pickle('cache/CloseByPhoton200PU_PF_simToReco.pkl')
 else:
     print(" ")
     mergedV5 = pd.read_pickle('cache/CloseByPhoton200PU_CLUE3D_simToReco.pkl') 
@@ -135,171 +125,6 @@ phiBins = 50
 
 energy_edges = [[0, 10], [10, 25], [25, 50], [50, 100], [100, 200], [200, 500]]
 
-
-#### Clustering plots
-outputDirClusters = create_directory(OutputDir + "/clustersC2D/")
-fig = plt.figure(figsize = (15, 10))
-print(len(mergedLC.energy))
-plt.hist(mergedLC.energy, range=(0,1000), bins = energyBins, label = "CLUE2D", histtype = "step", lw = 2, color = 'red')
-plt.hist(mergedPF.energy, range=(0,1000), bins = energyBins, label = "PFClustering", histtype = "step", lw = 2, color = 'blue')
-plt.legend()
-plt.ylabel("Entries")
-plt.xlabel("Raw Energy [GeV]")
-hep.cms.text("Simulation", loc=0)
-plt.savefig(outputDirClusters + "BestRecoRawEnergy.png")
-plt.close()
-
-fig = plt.figure(figsize = (15,10))
-plt.hist(mergedLC.position_eta, range=(-1.5,1.5), bins = etaBins, label = "CLUE2D", histtype = "step", lw = 2, color = 'red')
-plt.legend()
-plt.ylabel("Entries")
-plt.xlabel("Eta")
-hep.cms.text("Simulation", loc=0)
-plt.savefig(outputDirClusters + "BestRecoEta.png")
-plt.close()
-
-fig = plt.figure(figsize = (15,10))
-plt.hist(mergedLC.position_phi, range=(-np.pi,np.pi), bins = phiBins, label = "CLUE2D", histtype = "step", lw = 2, color = 'red')
-plt.legend()
-plt.ylabel("Entries")
-plt.xlabel("Phi")
-hep.cms.text("Simulation", loc=0)
-plt.savefig(outputDirClusters + "BestRecoPhi.png")
-plt.close()
-
-fig = plt.figure(figsize = (15,10))
-plt.hist(mergedLC.cluster_layer_id, range=(0,6), bins = 6, label = "CLUE2D", histtype = "step", lw = 2, color = 'red')
-plt.legend()
-plt.ylabel("Entries")
-plt.xlabel("Layer")
-hep.cms.text("Simulation", loc=0)
-plt.savefig(outputDirClusters + "BestRecoLayer.png")
-plt.close()
-
-fig = plt.figure(figsize = (15,10))
-plt.hist(mergedLC.energy / mergedLC.caloparticle_energy, range=(0, 1.5), bins = energyBins, label="CLUE2D", histtype = "step", lw = 2, color="red")
-plt.legend()
-plt.ylabel("Entries")
-plt.xlabel("Reco energy w.r.t. regressed energy")
-hep.cms.text("Simulation", loc=0)
-plt.savefig(outputDirClusters + "BestRecoEnergyResponse.png")
-plt.close()
-
-for edges in energy_edges:
-    energy_binnedLC = mergedLC[(mergedLC['energy'] > edges[0]) & (mergedLC['energy'] <= edges[1])]
-    fig = plt.figure(figsize = (15,10))
-    plt.hist(energy_binnedLC.energy, range=(0,1000), bins = energyBins, label = "CLUE2D", histtype = "step", lw = 2, color = 'red')
-    plt.legend()
-    plt.ylabel("Entries")
-    plt.xlabel("Raw Energy [Gev]")
-    hep.cms.text("Simulation", loc=0)
-    plt.savefig(outputDirClusters + "BestRecoRawEnergy{}To{}.png".format(edges[0], edges[1]))
-    plt.close()
-
-    fig = plt.figure(figsize = (15,10))
-    plt.hist(energy_binnedLC.position_eta, range = (-1.5, 1.5), bins = etaBins, label = "CLUE2D", histtype = "step", lw = 2, color = 'red')
-    plt.legend()
-    plt.ylabel("Entries")
-    plt.xlabel("eta")
-    hep.cms.text("Simulation", loc=0)
-    plt.savefig(outputDirClusters + "BestRecoEta{}To{}.png".format(edges[0], edges[1]))
-    plt.close()
-
-    fig = plt.figure(figsize = (15,10))
-    plt.hist(energy_binnedLC.position_phi, range = (-np.pi, np.pi),  bins = phiBins, label = "CLUE2D", histtype = "step", lw = 2, color = 'red')
-    plt.legend()
-    plt.ylabel("Entries")
-    plt.xlabel("phi")
-    hep.cms.text("Simulation", loc=0)
-    plt.savefig(outputDirClusters + "BestRecoPhi{}To{}.png".format(edges[0], edges[1]))
-    plt.close()
-
-    fig = plt.figure(figsize = (15,10))
-    plt.hist(energy_binnedLC.energy / energy_binnedLC.caloparticle_energy, range=(0, 1.5), bins = energyBins, label="CLUE2D", histtype = "step", lw = 2, color="red")
-    plt.legend()
-    plt.ylabel("Entries")
-    plt.xlabel("Reco energy w.r.t. regressed energy")
-    hep.cms.text("Simulation", loc=0)
-    plt.savefig(outputDirClusters + "BestRecoEnergyResponse{}To{}.png".format(edges[0], edges[1]))
-    plt.close()
-
-#### Efficient clustering plots
-filteredLC = mergedLC[mergedLC['sharedE'] / mergedLC['caloparticle_energy'] >= 0.5]
-filteredPF = mergedPF[mergedPF['sharedE'] / mergedPF['caloparticle_energy'] >= 0.5]
-fig = plt.figure(figsize=(15,10))
-plt.hist(filteredLC.energy, range=(0, 250), bins = energyBins, label = "CLUE2D", histtype = "step", lw = 2, color = 'red')
-plt.hist(filteredPF.energy, range=(0, 250), bins = energyBins, label = "PFClustering", histtype = "step", lw = 2, color = 'black')
-plt.legend()
-plt.ylabel("Entries")
-plt.xlabel("Raw Energy [GeV]")
-hep.cms.text("Simulation", loc=0)
-plt.savefig(outputDirClusters + "EfficientRecoRawEnergy.png")
-plt.close()
-
-fig = plt.figure(figsize=(15,10))
-plt.hist(filteredLC.position_eta, range=(-1.5, 1.5), bins = etaBins, label = "CLUE2D", histtype = "step", lw = 2, color = 'red')
-plt.legend()
-plt.ylabel("Entries")
-plt.xlabel("Eta")
-hep.cms.text("Simulation", loc=0)
-plt.savefig(outputDirClusters + "EfficientRecoEta.png")
-plt.close()
-
-fig = plt.figure(figsize=(15,10))
-plt.hist(filteredLC.position_phi, range=(-np.pi, np.pi), bins = phiBins, label = "CLUE2D", histtype = "step", lw = 2, color = 'red')
-plt.legend()
-plt.ylabel("Entries")
-plt.xlabel("Phi")
-hep.cms.text("Simulation", loc=0)
-plt.savefig(outputDirClusters + "EfficientRecoPhi.png")
-plt.close()
-
-fig = plt.figure(figsize=(15,10))
-plt.hist(filteredLC.cluster_layer_id, range=(0, 6), bins = 6, label = "CLUE2D", histtype = "step", lw = 2, color = 'red')
-plt.legend()
-plt.ylabel("Entries")
-plt.xlabel("Layer")
-hep.cms.text("Simulation", loc=0)
-plt.savefig(outputDirClusters + "EfficientRecoLayer.png")
-plt.close()
-
-for edges in energy_edges:
-    energy_binnedLC = filteredLC[(filteredLC['energy'] > edges[0]) & (filteredLC['energy'] <= edges[1])]
-    fig = plt.figure(figsize = (15,10))
-    plt.hist(energy_binnedLC.energy, range=(0,1000), bins = energyBins, label = "CLUE2D", histtype = "step", lw = 2, color = 'red')
-    plt.legend()
-    plt.ylabel("Entries")
-    plt.xlabel("Raw Energy [Gev]")
-    hep.cms.text("Simulation", loc=0)
-    plt.savefig(outputDirClusters + "EfficientRecoRawEnergy{}To{}.png".format(edges[0], edges[1]))
-    plt.close()
-
-    fig = plt.figure(figsize = (15,10))
-    plt.hist(energy_binnedLC.position_eta, range = (-1.5, 1.5), bins = etaBins, label = "CLUE2D", histtype = "step", lw = 2, color = 'red')
-    plt.legend()
-    plt.ylabel("Entries")
-    plt.xlabel("eta")
-    hep.cms.text("Simulation", loc=0)
-    plt.savefig(outputDirClusters + "EfficientRecoEta{}To{}.png".format(edges[0], edges[1]))
-    plt.close()
-
-    fig = plt.figure(figsize = (15,10))
-    plt.hist(energy_binnedLC.position_phi, range = (-np.pi, np.pi),  bins = phiBins, label = "CLUE2D", histtype = "step", lw = 2, color = 'red')
-    plt.legend()
-    plt.ylabel("Entries")
-    plt.xlabel("phi")
-    hep.cms.text("Simulation", loc=0)
-    plt.savefig(outputDirClusters + "EfficientRecoPhi{}To{}.png".format(edges[0], edges[1]))
-    plt.close()
-
-    fig = plt.figure(figsize = (15,10))
-    plt.hist(energy_binnedLC.energy / energy_binnedLC.caloparticle_energy, range=(0, 1.5), bins = energyBins, label="CLUE2D", histtype = "step", lw = 2, color="red")
-    plt.legend()
-    plt.ylabel("Entries")
-    plt.xlabel("Reco energy w.r.t. regressed energy")
-    hep.cms.text("Simulation", loc=0)
-    plt.savefig(outputDirClusters + "EfficientRecoEnergyResponse{}To{}.png".format(edges[0], edges[1]))
-    plt.close()
 
 #### BestRECO Plots #####
 outputDirTracksterMerged = create_directory(OutputDir + "/trackstersC3D/")
@@ -678,37 +503,6 @@ custom_cmap = ListedColormap(cmap(np.linspace(0, 1, 10)))
 # Set the color cycle
 plt.rcParams["axes.prop_cycle"] = plt.cycler(color=custom_cmap.colors)
 
-
-lab = ['CLUE', 'PFClustering']
-outputDirClustersResponses = create_directory(OutputDir + "/clustersC2D/")
-
-filtered_data_V5 = mergedLC[mergedLC['sharedE'] / mergedLC['caloparticle_energy'] >= 0.5]
-filtered_data_V3 = mergedPF[mergedPF['sharedE'] / mergedPF['caloparticle_energy'] >= 0.5]
-plt.hist(filtered_data_V5.energy / filtered_data_V5.caloparticle_energy, range = (0, 1.5), bins = energyBins, label="CLUE", histtype="step", lw=2, color="red", density=True)
-plt.hist(filtered_data_V3.energy / filtered_data_V3.caloparticle_energy, range = (0, 1.5), bins = energyBins, label="PFClustering", histtype="step", lw=2, color="black", density=True)
-plt.legend()
-plt.ylabel("Entries")
-plt.xlabel("Raw Response w.r.t. Regressed")
-hep.cms.text("Simulation", loc=0)
-plt.savefig(outputDirClustersResponses + "EfficientRecoRawEnergyResponse.png")
-plt.close()
-
-bins = [0, 20, 50, 100, 200]
-lab = ['CLUE3D', 'FastJet']
-outputDirClustersResponses = create_directory(OutputDir + "/clustersC2D/Responses/")
-data = [mergedLC]
-for id, d in enumerate(data):
-    fig = plt.figure(figsize = (15,10))
-    for b in bins:
-        filtered_data_V5 = d[d['caloparticle_energy'] >= b]
-        plt.hist(filtered_data_V5.energy / filtered_data_V5.caloparticle_energy, range = (0, 1.5), bins = energyBins, label = "CaloParticle >= " + str(b) + " GeV", histtype = "step", lw = 2, density = True)
-    plt.legend()
-    plt.ylabel("Entries")
-    plt.xlabel("Raw Response w.r.t Regressed")
-    hep.cms.text("Simulation", loc=0)
-    plt.savefig(outputDirClustersResponses + "BestRecoRawEnergyResponse.png")
-    plt.close()
-
 bins = [0, 20, 50, 100, 200]
 data = [mergedV5, mergedV3]
 lab = ['CLUE3D', 'FastJet']
@@ -737,71 +531,6 @@ for id, d in enumerate(data):
     plt.savefig(outputDirTracksterMerged + "BestRecoRawEnergyResponseWrtRaw" + lab[id] + ".png")
     plt.close()
 
-## Cluster efficiency plots ##
-outputDirClustersEff = create_directory(outputDirClusters+ "/EffFakeMergeDup/")
-filtered_data_V5 = mergedLC[mergedLC['sharedE'] / mergedLC['caloparticle_energy'] >= 0.5]
-filtered_data_V3 = mergedPF[mergedPF['sharedE'] / mergedPF['caloparticle_energy'] >= 0.5]
-
-pd.set_option('display.max_rows', None)
-mergedLC.dropna(inplace=True)
-
-fig = plt.figure(figsize=(15,10))
-plot_ratio_single(filtered_data_V5.caloparticle_energy, mergedLC.caloparticle_energy, 20, rangeX = (0,1000), label1="CLUE2D", xlabel="Regressed Energy [GeV]", color1='blue', saveFileName=f"{outputDirClustersEff}/efficiencyC2D.png")
-plot_ratio_single(filtered_data_V5.caloparticle_eta, mergedLC.caloparticle_eta, etaBins, rangeX = (-1.5, 1.5), label1="CLUE2D", xlabel="Eta", color1='blue', saveFileName=f"{outputDirClustersEff}/efficiencyEtaC2D.png")
-plot_ratio_single(filtered_data_V5.caloparticle_phi, mergedLC.caloparticle_phi, phiBins, rangeX = (-np.pi, np.pi), label1="CLUE2D", xlabel="Phi", color1='blue', saveFileName=f"{outputDirClustersEff}/efficiencyPhiC2D.png")
-
-nums = [filtered_data_V5.caloparticle_energy, filtered_data_V3.caloparticle_energy]
-denoms = [mergedLC.caloparticle_energy, mergedPF.caloparticle_energy]
-labels = ["CLUE", "PFClustering"]
-plot_ratio_multiple(nums, denoms, 20, rangeX=(0,250), labels=labels, xlabel="Regressed Energy [GeV]", colors=["red", "black"], saveFileName=f"{outputDirClustersEff}/efficiencyC2DPF.png")
-
-nums = [filtered_data_V5.caloparticle_eta, filtered_data_V3.caloparticle_eta]
-denoms = [mergedLC.caloparticle_eta, mergedPF.caloparticle_eta]
-labels = ["CLUE", "PFClustering"]
-plot_ratio_multiple(nums, denoms, etaBins, rangeX=(-1.5,1.5), labels=labels, xlabel="Eta", colors=["red", "black"], saveFileName=f"{outputDirClustersEff}/efficiencyEtaC2DPF.png")
-
-nums = [filtered_data_V5.caloparticle_phi, filtered_data_V3.caloparticle_phi]
-denoms = [mergedLC.caloparticle_phi, mergedPF.caloparticle_phi]
-labels = ["CLUE", "PFClustering"]
-plot_ratio_multiple(nums, denoms, phiBins, rangeX=(-np.pi,np.pi), labels=labels, xlabel="Regressed Energy [GeV]", colors=["red", "black"], saveFileName=f"{outputDirClustersEff}/efficiencyPhiC2DPF.png")
-
-outputDirClustersEff = create_directory(outputDirClusters + "/EffFakeMergeDupVarious/")
-effTh = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8]
-colors = ['pink', 'cyan', 'olive', 'magenta', 'blue', 'red', 'green', 'orange', 'purple']
-mergedNum = []
-mergedDen = []
-energyBins = np.linspace(0,400, 22)
-energyBins = np.append(energyBins, 600)
-labels = []
-for th in effTh:
-    filtered_data_V5 = mergedLC[mergedLC['sharedE'] / mergedLC['caloparticle_energy'] >= th]
-    mergedNum.append(filtered_data_V5.caloparticle_energy)
-    mergedDen.append(mergedLC.caloparticle_energy)
-    labels.append(f"CLUE2D - {th}")
-plot_ratio_multiple(mergedNum, mergedDen, energyBins, rangeX = (0,1000), labels = labels, colors = colors, xlabel="Raw Energy [GeV]", saveFileName=f"{outputDirClustersEff}/efficiencyCLUE2D_energy.png", doRatio = False)
-
-mergedNum = []
-mergedDen = []
-etaBins = 20
-labels = []
-for th in effTh:
-    filtered_data_V5 = mergedLC[mergedLC['sharedE'] / mergedLC['caloparticle_energy'] >= th]
-    mergedNum.append(filtered_data_V5.caloparticle_eta)
-    mergedDen.append(mergedLC.caloparticle_eta)
-    labels.append(f"CLUE2D - {th}")
-plot_ratio_multiple(mergedNum, mergedDen, etaBins, rangeX = (-1.5,1.5), labels = labels, colors = colors, xlabel="Eta", saveFileName=f"{outputDirClustersEff}/efficiencyCLUE2D_eta.png", doRatio = False)
-
-
-mergedNum = []
-mergedDen = []
-phiBins = 20
-labels = []
-for th in effTh:
-    filtered_data_V5 = mergedLC[mergedLC['sharedE'] / mergedLC['caloparticle_energy'] >= th]
-    mergedNum.append(filtered_data_V5.caloparticle_phi)
-    mergedDen.append(mergedLC.caloparticle_phi)
-    labels.append(f"CLUE2D - {th}")
-plot_ratio_multiple(mergedNum, mergedDen, phiBins, rangeX = (-np.pi,np.pi), labels = labels, colors = colors, xlabel="Phi", saveFileName=f"{outputDirClustersEff}/efficiencyCLUE2D_phi.png", doRatio = False)
 
 ## Efficiencies ##
 outputDirEffFakeMergeDup = create_directory(OutputDir + "/trackstersC3D/EffFakeMergeDup/")
@@ -926,255 +655,9 @@ for th in effTh:
     labels.append(f"FastJet - {th}")
 plot_ratio_multiple(mergedNum, mergedDen, phiBins, rangeX = (-np.pi,np.pi), labels = labels, colors = colors, xlabel="Phi", saveFileName=f"{outputDirEffFakeMergeDup}/efficiencyFastJet_phi.png", doRatio = False)
 
-### Cluster sums
-if args.cache:
-    mergedLCTMP = pd.read_pickle('cache/CloseByPhoton200PU_CLUE2D_simToReco_merged.pkl')
-else:
-    mergedLCTMP = simToRecoV5LC[1].reset_index()
-    mergedLCTMP.to_pickle('cache/CloseByPhoton200PU_CLUE2D_simToReco_merged.pkl')
-
-mergedLC = mergedLCTMP.groupby(['eventInternal', 'caloparticle_id']).agg(
-    energy = ('energy', 'sum'),
-    sharedE = ('sharedE', 'sum'),
-    caloparticle_energy = ('caloparticle_energy', lambda x: list(x)[0]),
-    caloparticle_eta = ('caloparticle_eta', lambda x: list(x)[0]),
-    caloparticle_phi = ('caloparticle_phi', lambda x: list(x)[0])
-).reset_index()
-
-if args.cache:
-    mergedPFTMP = pd.read_pickle('cache/CloseByPhoton200PU_PF_simToReco_merged.pkl')
-else:
-    mergedPFTMP = simToRecoV3PF[1].reset_index()
-    mergedPFTMP.to_pickle('cache/CloseByPhoton200PU_PF_simToReco_merged.pkl')
-
-#mergedPFTMP = simToRecoV3PF[1].reset_index()
-mergedPF = mergedPFTMP.groupby(['eventInternal', 'caloparticle_id']).agg(
-    energy = ('energy', 'sum'),
-    sharedE = ('sharedE', 'sum'),
-    caloparticle_energy = ('caloparticle_energy', lambda x: list(x)[0]),
-    caloparticle_eta = ('caloparticle_eta', lambda x: list(x)[0]),
-    caloparticle_phi = ('caloparticle_phi', lambda x: list(x)[0])
-).reset_index()
-
-
-outputDirClustersMerged = create_directory(OutputDir + "/sumClustersC2D/")
-fig = plt.figure(figsize = (15,10))
-plt.hist(mergedLC.energy / mergedLC.caloparticle_energy, range=(0,1.5), bins=100, label="CLUE", histtype="step", lw=2, color="red", density=True)
-plt.hist(mergedPF.energy / mergedPF.caloparticle_energy, range=(0,1.5), bins=100, label="PFClustering", histtype="step", lw=2, color="black", density=True)
-plt.legend()
-plt.ylabel("A.U.")
-plt.xlabel("Raw Response w.r.t. Regressed")
-hep.cms.text("Simulation", loc=0)
-plt.savefig(outputDirClustersMerged + "BestRecoRawEnergyResponseC2DPF.png")
-plt.close()
-
-data = [mergedLC]
-outputDirClustersMerged = create_directory(OutputDir + "/sumClustersC2D/Responses/")
-for id, d in enumerate(data):
-    fig = plt.figure(figsize = (15,10))
-    for b in bins:
-        filtered_data_V5 = d[d['caloparticle_energy'] >= b]
-        plt.hist(filtered_data_V5.energy / filtered_data_V5.caloparticle_energy, range = (0, 1.5), bins = 100, label = "CaloParticle >= " + str(b) + " GeV", histtype = "step", lw = 2, density = True)
-    plt.legend()
-    plt.ylabel("Entries")
-    plt.xlabel("Raw Response w.r.t Regressed")
-    hep.cms.text("Simulation", loc=0)
-    plt.savefig(outputDirClustersMerged + "BestRecoRawEnergyResponse.png")
-    plt.close()
-
-### Efficiencies
-outputDirClustersMergedEff = create_directory(OutputDir + "/sumClustersC2D/EffFakeMergeDup/")
-filtered_data_V5 = mergedLC[mergedLC['sharedE'] / mergedLC['caloparticle_energy'] >= 0.5]
-filtered_data_V3 = mergedPF[mergedPF['sharedE'] / mergedPF['caloparticle_energy'] >= 0.5]
-energyBins = np.linspace(0,210, 22)
-plot_ratio_single(filtered_data_V5.caloparticle_energy, mergedLC.caloparticle_energy, energyBins, rangeX = (0,1000), label1="CLUE2D", xlabel="Raw Energy [GeV]", color1='blue', saveFileName=f"{outputDirClustersMergedEff}/efficiencyC2D.png")
-
-### response profile plot
-fig, ax1 = plt.subplots()
-regplot(x=mergedLC.caloparticle_energy, y=mergedLC.sharedE/mergedLC.caloparticle_energy, x_bins=energyBins, marker="o", color='red', fit_reg=None, label="CLUE")
-regplot(x=mergedPF.caloparticle_energy, y=mergedPF.sharedE/mergedPF.caloparticle_energy, x_bins=energyBins, marker="o", color='black', fit_reg=None, label="PFClustering")
-hep.cms.text('Simulation', loc=0, ax=ax1)
-ax1.set_xlabel('Energy [GeV]')
-ax1.set_ylabel('Response')
-ax1.axhline(y=1, linestyle="--", linewidth=4, color="black")
-ax1.legend()
-ax1.grid(True)
-ax1.set_ylim(0.6, 1.4)
-ax1.grid(True)
-fig.savefig(f"{outputDirClustersMergedEff}/responseProfileC2DPF.png")
-
-etaBins = 20
-plot_ratio_single(filtered_data_V5.caloparticle_eta, mergedLC.caloparticle_eta, etaBins, rangeX = (-1.5, 1.5), label1="CLUE2D", xlabel="Eta", color1='blue', saveFileName=f"{outputDirClustersMergedEff}/efficiencyEtaC2D.png")
-phiBins = 20
-plot_ratio_single(filtered_data_V5.caloparticle_phi, mergedLC.caloparticle_phi, phiBins, rangeX = (-np.pi, np.pi), label1="CLUE2D", xlabel="Phi", color1='blue', saveFileName=f"{outputDirClustersMergedEff}/efficiencyPhiC2D.png")
-
-nums = [filtered_data_V5.caloparticle_energy, filtered_data_V3.caloparticle_energy]
-dens = [mergedLC.caloparticle_energy, mergedPF.caloparticle_energy]
-plot_ratio_multiple(nums, dens, energyBins, rangeX = (0,210), labels = ["CLUE", "PFClustering"], colors = ['red', 'black', 'green'], xlabel="Raw Energy [GeV]", saveFileName=f"{outputDirClustersMergedEff}/efficiencyC2DPF.png")
-
 ### Trackster sums
 
 bins = [0, 20, 50, 100, 200, 500, 1000]
-
-if args.cache:
-    mergedV5TMP = pd.read_pickle('cache/CloseByPhoton200PU_CLUE3D_simToReco_merged.pkl')
-    mergedV3TMP = pd.read_pickle('cache/CloseByPhoton200PU_FastJet_simToReco_merged.pkl')
-else:
-    mergedV5TMP = resV5[1].reset_index()
-    mergedV5TMP.to_pickle('cache/CloseByPhoton200PU_CLUE3D_simToReco_merged.pkl')
-    mergedV3TMP = resV3[1].reset_index()
-    mergedV3TMP.to_pickle('cache/CloseByPhoton200PU_FastJet_simToReco_merged.pkl')
-
-mergedV5 = mergedV5TMP.groupby(['eventInternal', 'caloparticle_id']).agg(
-    raw_energy=('raw_energy', 'sum'),
-    sharedE=('sharedE', 'sum'),
-    raw_energy_CP=('raw_energy_CP', lambda x: list(x)[0]),
-    regressed_energy_CP=('regressed_energy_CP', lambda x: list(x)[0]),
-    barycenter_eta_CP=('barycenter_eta_CP', lambda x: list(x)[0]),
-    barycenter_phi_CP=('barycenter_phi_CP', lambda x: list(x)[0])
-).reset_index()
-
-
-mergedV3 = mergedV3TMP.groupby(['eventInternal', 'caloparticle_id']).agg(
-    raw_energy=('raw_energy', 'sum'),
-    sharedE=('sharedE', 'sum'),
-    raw_energy_CP=('raw_energy_CP', lambda x: list(x)[0]),
-    regressed_energy_CP=('regressed_energy_CP', lambda x: list(x)[0]),
-    barycenter_eta_CP=('barycenter_eta_CP', lambda x: list(x)[0]),
-    barycenter_phi_CP=('barycenter_phi_CP', lambda x: list(x)[0])
-).reset_index()
-
-data = [mergedV5, mergedV3]
-lab = ['CLUE3D', 'FastJet']
-outputDirTracksterMerged = create_directory(OutputDir + "/sumTrackstersC3D/Responses/")
-for id, d in enumerate(data):
-    fig = plt.figure(figsize = (15,10))
-    for b in bins:
-        filtered_data_V5 = d[d['regressed_energy_CP'] >= b]
-        plt.hist(filtered_data_V5.raw_energy / filtered_data_V5.regressed_energy_CP, range = (0, 1.5), bins = 100, label = "SimTrackster >= " + str(b) + " GeV", histtype = "step", lw = 2, density = True)
-    plt.legend()
-    plt.ylabel("Entries")
-    plt.xlabel("Raw Response w.r.t Regressed")
-    hep.cms.text("Simulation", loc=0)
-    plt.savefig(outputDirTracksterMerged + "BestRecoRawEnergyResponse" + lab[id] + ".png")
-    plt.close()
-
-for id, d in enumerate(data):
-    fig = plt.figure(figsize = (15,10))
-    for b in bins:
-        filtered_data_V5 = d[d['regressed_energy_CP'] >= b]
-        plt.hist(filtered_data_V5.raw_energy / filtered_data_V5.raw_energy_CP, range = (0, 1.5), bins = 100, label = "SimTrackster >= " + str(b) + " GeV", histtype = "step", lw = 2, density = True)
-    plt.legend()
-    plt.ylabel("Entries")
-    plt.xlabel("Raw Response w.r.t Raw")
-    hep.cms.text("Simulation", loc=0)
-    plt.savefig(outputDirTracksterMerged + "BestRecoRawEnergyResponseWrtRaw" + lab[id] + ".png")
-    plt.close()
-
-
-## Efficiencies ##
-outputDirEffFakeMergeDup = create_directory(OutputDir + "/sumTrackstersC3D/EffFakeMergeDup/")
-filtered_data_V5 = mergedV5[mergedV5['sharedE'] / mergedV5['raw_energy_CP'] >= 0.5]
-filtered_data_V3 = mergedV3[mergedV3['sharedE'] / mergedV3['raw_energy_CP'] >= 0.5]
-energyBins = np.linspace(0,400, 22)
-energyBins = np.append(energyBins, 600)
-plot_ratio_single(filtered_data_V5.raw_energy_CP, mergedV5.raw_energy_CP, energyBins, rangeX = (0,1000), label1="CLUE3D", xlabel="Raw Energy [GeV]", color1='blue', saveFileName=f"{outputDirEffFakeMergeDup}/efficiencyC3D.png")
-plot_ratio_single(filtered_data_V3.raw_energy_CP, mergedV3.raw_energy_CP, energyBins, rangeX = (0,1000), label1="FastJet", xlabel="Raw Energy [GeV]", color1='blue', saveFileName=f"{outputDirEffFakeMergeDup}/efficiencyFJ.png")
-
-nums = [filtered_data_V5.raw_energy_CP,filtered_data_V3.raw_energy_CP]
-dens = [mergedV5.raw_energy_CP, mergedV3.raw_energy_CP]
-plot_ratio_multiple(nums, dens, energyBins, rangeX = (0,1000), labels = ["CLUE3D", "FastJet"], colors = ['blue', 'red', 'green'], xlabel="Raw Energy [GeV]", saveFileName=f"{outputDirEffFakeMergeDup}/efficiencyC3DFJ.png")
-
-# Now we do the same thing for barycenter_eta and barycenter_phi
-etaBins = 20
-plot_ratio_single(filtered_data_V5.barycenter_eta_CP, mergedV5.barycenter_eta_CP, etaBins, rangeX = (-1.5,1.5), label1="CLUE3D", xlabel="Eta", color1='blue', saveFileName=f"{outputDirEffFakeMergeDup}/efficiencyC3DEta.png")
-plot_ratio_single(filtered_data_V3.barycenter_eta_CP, mergedV3.barycenter_eta_CP, etaBins, rangeX = (-1.5,1.5), label1="FastJet", xlabel = "Eta", color1='blue', saveFileName=f"{outputDirEffFakeMergeDup}/efficiencFJEta.png")
-
-nums = [filtered_data_V5.barycenter_eta_CP, filtered_data_V3.barycenter_eta_CP]
-dens = [mergedV5.barycenter_eta_CP, mergedV3.barycenter_eta_CP]
-plot_ratio_multiple(nums, dens, etaBins, rangeX = (-1.5, 1.5), labels = ["CLUE3D", "FastJet"], colors = ['blue', 'red', 'green'], xlabel="Eta", saveFileName=f"{outputDirEffFakeMergeDup}/efficiencyC3DFJEta.png")
-
-phiBins = 20
-plot_ratio_single(filtered_data_V5.barycenter_phi_CP, mergedV5.barycenter_phi_CP, phiBins, rangeX = (-np.pi, np.pi), xlabel="Phi", label1="CLUE3D", color1='blue', saveFileName=f"{outputDirEffFakeMergeDup}/efficiencyC3DPhi.png")
-plot_ratio_single(filtered_data_V3.barycenter_phi_CP, mergedV3.barycenter_phi_CP, phiBins, rangeX = (-np.pi, np.pi), xlabel="Phi", label1="FastJet", color1='blue', saveFileName=f"{outputDirEffFakeMergeDup}/efficiencyFJPhi.png")
-
-nums = [filtered_data_V5.barycenter_phi_CP, filtered_data_V3.barycenter_phi_CP]
-dens = [mergedV5.barycenter_phi_CP, mergedV3.barycenter_phi_CP]
-plot_ratio_multiple(nums, dens, phiBins, rangeX = (-np.pi, np.pi), labels = ["CLUE3D", "FastJet"], colors = ['blue', 'red', 'green'], xlabel="Phi", saveFileName=f"{outputDirEffFakeMergeDup}/efficiencyC3DFJPhi.png")
-
-
-outputDirEffFakeMergeDup = create_directory(OutputDir + "/sumTrackstersC3D/EffFakeMergeDupVarious/")
-effTh = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8]
-colors = ['pink', 'cyan', 'olive', 'magenta', 'blue', 'red', 'green', 'orange', 'purple']
-mergedNum = []
-mergedDen = []
-energyBins = np.linspace(0,400, 22)
-energyBins = np.append(energyBins, 600)
-labels = []
-for th in effTh:
-    filtered_data_V5 = mergedV5[mergedV5['sharedE'] / mergedV5['raw_energy_CP'] >= th]
-    mergedNum.append(filtered_data_V5.raw_energy_CP)
-    mergedDen.append(mergedV5.raw_energy_CP)
-    labels.append(f"CLUE3D - {th}")
-plot_ratio_multiple(mergedNum, mergedDen, energyBins, rangeX = (0,1000), labels = labels, colors = colors, xlabel="Raw Energy [GeV]", saveFileName=f"{outputDirEffFakeMergeDup}/efficiencyCLUE3D_energy.png", doRatio = False)
-
-mergedNum = []
-mergedDen = []
-etaBins = 20
-labels = []
-for th in effTh:
-    filtered_data_V5 = mergedV5[mergedV5['sharedE'] / mergedV5['raw_energy_CP'] >= th]
-    mergedNum.append(filtered_data_V5.barycenter_eta_CP)
-    mergedDen.append(mergedV5.barycenter_eta_CP)
-    labels.append(f"CLUE3D - {th}")
-plot_ratio_multiple(mergedNum, mergedDen, etaBins, rangeX = (-1.5,1.5), labels = labels, colors = colors, xlabel="Eta", saveFileName=f"{outputDirEffFakeMergeDup}/efficiencyCLUE3D_eta.png", doRatio = False)
-
-
-mergedNum = []
-mergedDen = []
-phiBins = 20
-labels = []
-for th in effTh:
-    filtered_data_V5 = mergedV5[mergedV5['sharedE'] / mergedV5['raw_energy_CP'] >= th]
-    mergedNum.append(filtered_data_V5.barycenter_phi_CP)
-    mergedDen.append(mergedV5.barycenter_phi_CP)
-    labels.append(f"CLUE3D - {th}")
-plot_ratio_multiple(mergedNum, mergedDen, phiBins, rangeX = (-np.pi,np.pi), labels = labels, colors = colors, xlabel="Phi", saveFileName=f"{outputDirEffFakeMergeDup}/efficiencyCLUE3D_phi.png", doRatio = False)
-
-## FastJet
-mergedNum = []
-mergedDen = []
-labels = []
-for th in effTh:
-    filtered_data_V3 = mergedV3[mergedV3['sharedE'] / mergedV3['raw_energy_CP'] >= th]
-    mergedNum.append(filtered_data_V3.raw_energy_CP)
-    mergedDen.append(mergedV3.raw_energy_CP)
-    labels.append(f"FastJet - {th}")
-plot_ratio_multiple(mergedNum, mergedDen, energyBins, rangeX = (0,1000), labels = labels, colors = colors, xlabel="Raw Energy [GeV]", saveFileName=f"{outputDirEffFakeMergeDup}/efficiencyFastJet_energy.png", doRatio = False)
-
-
-mergedNum = []
-mergedDen = []
-etaBins = 20
-labels = []
-for th in effTh:
-    filtered_data_V3 = mergedV3[mergedV3['sharedE'] / mergedV3['raw_energy_CP'] >= th]
-    mergedNum.append(filtered_data_V3.barycenter_eta_CP)
-    mergedDen.append(mergedV3.barycenter_eta_CP)
-    labels.append(f"FastJet - {th}")
-plot_ratio_multiple(mergedNum, mergedDen, etaBins, rangeX = (-1.5,1.5), labels = labels, colors = colors, xlabel="Eta", saveFileName=f"{outputDirEffFakeMergeDup}/efficiencyFastJet_eta.png", doRatio = False)
-
-
-mergedNum = []
-mergedDen = []
-phiBins = 20
-labels = []
-for th in effTh:
-    filtered_data_V3 = mergedV3[mergedV3['sharedE'] / mergedV3['raw_energy_CP'] >= th]
-    mergedNum.append(filtered_data_V3.barycenter_phi_CP)
-    mergedDen.append(mergedV3.barycenter_phi_CP)
-    labels.append(f"FastJet - {th}")
-plot_ratio_multiple(mergedNum, mergedDen, phiBins, rangeX = (-np.pi,np.pi), labels = labels, colors = colors, xlabel="Phi", saveFileName=f"{outputDirEffFakeMergeDup}/efficiencyFastJet_phi.png", doRatio = False)
 
 
 ## Fake rate ##

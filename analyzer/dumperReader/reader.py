@@ -93,7 +93,7 @@ class DumperReader:
 
     @cached_property
     def trackstersMerged(self) -> ak.Array:
-        return self.fileDir["trackstersMerged"].arrays()
+        return self.fileDir["tracksterLinksBarrel"].arrays()
 
     @cached_property
     def trackstersMerged_zipped(self) -> ak.Array:
@@ -109,7 +109,7 @@ class DumperReader:
         return ak.zip(
         base_dict,
         depth_limit = 2,  # don't try to zip vertices
-        with_name = "trackstersMerged"
+        with_name = "tracksterLinksBarrel"
         )
 
     @cached_property
@@ -150,7 +150,7 @@ class DumperReader:
 
     @cached_property
     def associations(self) -> ak.Array:
-        return self.fileDir["associations"].arrays(filter_name=["event_", "ts*", 'Mergetracksters_*', 'Mergetstracksters_*', 'lc_*', 'ticlBarrelTracksters_*'])
+        return self.fileDir["associations"].arrays(filter_name=["event_", "ts*", 'Mergetracksters_*', 'Mergetstracksters_*', 'lc_*', 'ticlBarrelTracksters_*', 'tracksterLinksBarrel_*'])
 
     @cached_property
     def supercluster_df(self) -> pd.DataFrame:
@@ -255,6 +255,20 @@ class DumperReader:
                .reset_index("caloparticle_id_wrong", drop=True)
                .set_index("caloparticle_id", append=True)
         )
+    
+    @cached_property
+    def assocs_bestScore_recoToSimMerged_df(self) -> pd.DataFrame:
+        """ Make a Df of largest score associations of each Trackster
+           
+            Indev entInternal	caloparticle_id, column : ts_id, score, sharedE
+        """
+        assocs_recoToSim_largestScore = assocs_bestScore(assocs_zip_recoToSimMerged(self.associations))
+        return (ak.to_dataframe(assocs_recoToSim_largestScore[["ts_id", "caloparticle_id", "score", "sharedE"]],
+                levelname=lambda x: {0: "eventInternal", 1: "ts_id_wrong"}[x])
+                .reset_index("ts_id_wrong", drop=True)
+                .set_index("ts_id", append=True)
+	)
+
     @cached_property
     def assocs_bestScore_simToRecoSharedLayerClusters_df(self) -> pd.DataFrame:
         assocs_simToReco_sharedE = assocs_zip_simToRecoLayerClusters(self.associations)

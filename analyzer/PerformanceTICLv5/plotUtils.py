@@ -175,7 +175,7 @@ class RatioPlot(SubPlot):
 
         return ratio, ratio_err_low, ratio_err_high, hist1, hist2, bin_edges
 
-    def plot_ratio(self, values1, values2, bins, label1="Data", label2="MC", ratio_label="Data/MC", color1='blue', color2='red', ratio_color='black'):
+    def plot_ratio(self, values1, values2, bins, label1="Data", label2="MC", ratio_label="Ratio", color1='blue', color2='red', ratio_color='black'):
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=self.size, dpi=self.dpi, gridspec_kw={'height_ratios': [3, 1]}, sharex=True)
         self.figure = fig
         self.axes = np.array([ax1, ax2])

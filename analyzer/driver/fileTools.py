@@ -36,7 +36,7 @@ def _dumperTypesFromFile(filePath:Path) -> list[DumperType]:
             if "superclustering" in ticlDumperKeys:
                 res.append(DumperType.TICLsupercls)
         if "superclusteringSampleDumper" in fileKeys:
-            res.append(DumperType.SuperclsSample)
+           res.append(DumperType.SuperclsSample)
         if "Events" in fileKeys:
             res.append(DumperType.DNNStep3)
     return res
@@ -245,7 +245,9 @@ def runComputations(computations:list[Computation], inputManager:Union[DumperInp
                     break
                 except Exception as e:
                     print(e) # or whatever kind of logging you want
-        with concurrent.futures.ProcessPoolExecutor(max_workers=min(max_workers, len(inputReader))) as executor:
+        #with concurrent.futures.ProcessPoolExecutor(max_workers=min(max_workers, len(inputReader))) as executor:
+        print(f">>> Running on {max_workers} workers")
+        with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
             # Deal with exceptions in handling of samples without failing everything
             # map_iterator is a generator that will yield the results in order, waiting until they are ready if necessary
             map_iterator = iter(tqdm(executor.map(_map_fcn, inputReader, [computations]*len(inputReader)), total=len(inputReader)))
@@ -256,9 +258,9 @@ def runComputations(computations:list[Computation], inputManager:Union[DumperInp
                     map_res.append(next(map_iterator))
                 except StopIteration:
                     break # exhausted all samples
-                except Exception as e:
-                    print("An exception occured during processing of a sample. Exception details are : ")
-                    print(e)
+                #except Exception as e:
+                #    print("An exception occured during processing of a sample. Exception details are : ")
+                #    print(e)
             
     else:
         map_res = map(_map_fcn, inputReader, [computations]*len(inputReader))

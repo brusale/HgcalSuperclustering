@@ -5,7 +5,7 @@ from typing import Union
 
 from .assocs import assocs_toDf
 
-trackster_basic_fields = ["ts_id", "raw_energy", "raw_em_energy", "regressed_energy", "raw_pt", "raw_em_pt", "barycenter_eta", "barycenter_phi", 'barycenter_x', 'barycenter_y']
+trackster_basic_fields = ["ts_id", "raw_energy", "raw_em_energy", "regressed_energy", "raw_pt", "raw_em_pt", "barycenter_eta", "barycenter_phi", 'barycenter_x', 'barycenter_y', 'n_vertices', 'span', 'min_layer', 'max_layer', 'e25_over_e55']
 
 def tracksters_toDf(tracksters:ak.Array) -> pd.DataFrame:
     """ Makes a dataframe with all tracksters
@@ -43,7 +43,8 @@ def tracksters_joinWithSimTracksters(tracksters:ak.Array, simTracksters:ak.Array
     """
     df_merged_1 = pd.merge(
         tracksters_toDf(tracksters),
-        assocs_toDf(assoc, score_threshold=score_threshold),
+	assocs_toDf(assoc, score_threshold=0.),
+        #assocs_toDf(assoc, score_threshold=score_threshold),
         left_index=True, right_index=True
     )
     return pd.merge(

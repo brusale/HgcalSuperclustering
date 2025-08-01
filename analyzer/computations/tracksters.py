@@ -29,6 +29,12 @@ CPtoTracksterMerged_properties = DataframeComputation(_CPtoTracksterMerged_fct, 
 
 def _TracksterToCP_fct(reader:DumperReader):
     reader = reader.ticlDumperReader
-    return TracksterToCPProperties(reader.assocs_bestScore_recoToSim_df(dropOnes=False), reader.tracksters_zipped[trackster_basic_fields],
+    return TracksterToCPProperties(reader.assocs_bestScore_recoToSim_df, reader.tracksters_zipped[trackster_basic_fields],
             reader.simTrackstersCP_df)
 TrackstertoCP_properties = DataframeComputation(_TracksterToCP_fct, "TracksterToCP_properties")
+
+def _MergedTracksterToCP_fct(reader:DumperReader):
+    reader = reader.ticlDumperReader
+    return TracksterToCPProperties(reader.assocs_bestScore_recoToSimMerged_df, reader.trackstersMerged_zipped[trackster_basic_fields],
+	    reader.simTrackstersCP_df)
+MergedTrackstertoCP_properties = DataframeComputation(_MergedTracksterToCP_fct, "MergedTracksterToCP_properties")

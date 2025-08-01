@@ -82,7 +82,7 @@ def plot_ratio_single(values1, values2, bins, rangeX, label1="Data", color1='blu
     plt.savefig(saveFileName)
     plt.close()
 
-def plot_ratio_multiple(values1: list, values2: list, bins, rangeX, labels: list, colors: list, ratio_label="Data/MC", ratio_color='black', ylabel="Efficiency", xlabel="Variable", doRatio=True, saveFileName="ratio.png"):
+def plot_ratio_multiple(values1: list, values2: list, bins, rangeX, labels: list, colors: list, ratio_label="Ratio", ratio_color='black', ylabel="Efficiency", xlabel="Variable", doRatio=True, saveFileName="ratio.png"):
     if (doRatio):
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10), dpi=1000,
               gridspec_kw={'height_ratios': [3, 1]}, sharex=True)
@@ -126,8 +126,8 @@ def plot_ratio_multiple(values1: list, values2: list, bins, rangeX, labels: list
         ax2.errorbar(bin_centers, ratio, yerr=[ratio_err_low, ratio_err_high], color=ratio_color,
                      label=ratio_label, capsize=3, fmt="o", markersize=5, linestyle='-')
         ax2.set_ylabel(ratio_label)
-        ax2.set_ylim(0, 2.5)
-
+        #ax2.set_ylim(0, 2.5)
+        ax2.set_ylim(0, 4)
         # Set labels
         ax1.set_ylabel(ylabel)
         ax2.set_xlabel(xlabel)
