@@ -61,7 +61,7 @@ class DumperReader:
 
     @property
     def nEvents(self):
-        return self.fileDir["ticlBarrelTracksters"].num_entries
+        return self.fileDir["ticlTrackstersLinksBarrel"].num_entries
 
     @cached_property
     def clusters(self) -> ak.Array:
@@ -78,7 +78,7 @@ class DumperReader:
 
     @cached_property
     def tracksters(self) -> ak.Array:
-        return self.fileDir["ticlBarrelTracksters"].arrays()
+        return self.fileDir["ticlTrackstersLinksBarrel"].arrays()
 
 
     @cached_property
@@ -88,12 +88,12 @@ class DumperReader:
                         if key not in ['event_', 'vertices_multiplicity','NTracksters', 'NClusters']}
 ,
             depth_limit=2, # don't try to zip vertices
-            with_name="ticlBarrelTracksters"
+            with_name="ticlTrackstersLinksBarrel"
         )
 
     @cached_property
     def trackstersMerged(self) -> ak.Array:
-        return self.fileDir["tracksterLinksBarrel"].arrays()
+        return self.fileDir["ticlTrackstersLinksBarrel"].arrays()
 
     @cached_property
     def trackstersMerged_zipped(self) -> ak.Array:
@@ -109,7 +109,7 @@ class DumperReader:
         return ak.zip(
         base_dict,
         depth_limit = 2,  # don't try to zip vertices
-        with_name = "tracksterLinksBarrel"
+        with_name = "ticlTrackstersLinksBarrel"
         )
 
     @cached_property
@@ -122,7 +122,7 @@ class DumperReader:
 
     @cached_property
     def simTrackstersCP(self) -> ak.Array:
-        return self.fileDir["simtrackstersCP"].arrays(filter_name=["event_", "raw_energy", "raw_energy_em", "regressed_energy", "barycenter_*", "n_vertices", "min_layer", "max_layer", "span"])
+        return self.fileDir["simtrackstersBarrelCP"].arrays(filter_name=["event_", "raw_energy", "raw_energy_em", "regressed_energy", "barycenter_*", "n_vertices", "min_layer", "max_layer", "span"])
 
     @cached_property
     def simTrackstersCP_df(self) -> pd.DataFrame:
@@ -150,7 +150,7 @@ class DumperReader:
 
     @cached_property
     def associations(self) -> ak.Array:
-        return self.fileDir["associations"].arrays(filter_name=["event_", "ts*", 'Mergetracksters_*', 'Mergetstracksters_*', 'lc_*', 'ticlBarrelTracksters_*', 'tracksterLinksBarrel_*'])
+        return self.fileDir["associations"].arrays(filter_name=["event_", "ts*", 'Mergetracksters_*', 'Mergetstracksters_*', 'lc_*', 'ticlTracksters*_*', 'ticlTrackstersLinksBarrel_*'])
 
     @cached_property
     def supercluster_df(self) -> pd.DataFrame:

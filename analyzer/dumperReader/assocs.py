@@ -58,10 +58,10 @@ def assocs_zip_recoToSim(assocs_unzipped:ak.Array, simVariant:Literal["CP", "SC"
     """
     if simVariant == "CP":
         return ak.zip({
-            "ts_id":ak.local_index(assocs_unzipped.ticlBarrelTracksters_recoToSim_CP_byLCs, axis=1),
-            "caloparticle_id":assocs_unzipped.ticlBarrelTracksters_recoToSim_CP_byLCs,
-            "score":assocs_unzipped.ticlBarrelTracksters_recoToSim_CP_byLCs_score,
-            "sharedE":assocs_unzipped.ticlBarrelTracksters_recoToSim_CP_byLCs_sharedE})  
+            "ts_id":ak.local_index(assocs_unzipped.ticlTrackstersCLUE3DBarrel_recoToSim_CP, axis=1),
+            "caloparticle_id":assocs_unzipped.ticlTrackstersCLUE3DBarrel_recoToSim_CP,
+            "score":assocs_unzipped.ticlTrackstersCLUE3DBarrel_recoToSim_CP_score,
+            "sharedE":assocs_unzipped.ticlTrackstersCLUE3DBarrel_recoToSim_CP_sharedE})  
     elif simVariant == "SC":
         return ak.zip({
             "ts_id":ak.local_index(assocs_unzipped.tsCLUE3D_recoToSim_SC, axis=1),
@@ -92,10 +92,10 @@ def assocs_zip_simToReco(assocs_unzipped:ak.Array, simVariant:Literal["CP", "SC"
     """
     if simVariant == "CP":
         return ak.zip({
-            "caloparticle_id":ak.local_index(assocs_unzipped.ticlBarrelTracksters_simToReco_CP_byLCs, axis=1),
-            "ts_id":assocs_unzipped.ticlBarrelTracksters_simToReco_CP_byLCs,
-            "score":assocs_unzipped.ticlBarrelTracksters_simToReco_CP_byLCs_score,
-            "sharedE":assocs_unzipped.ticlBarrelTracksters_simToReco_CP_byLCs_sharedE})
+            "caloparticle_id":ak.local_index(assocs_unzipped.ticlTrackstersCLUE3DBarrel_simToReco_CP, axis=1),
+            "ts_id":assocs_unzipped.ticlTrackstersCLUE3DBarrel_simToReco_CP,
+            "score":assocs_unzipped.ticlTrackstersCLUE3DBarrel_simToReco_CP_score,
+            "sharedE":assocs_unzipped.ticlTrackstersCLUE3DBarrel_simToReco_CP_sharedE})
     elif simVariant == "SC":
         return ak.zip({
             "simcluster_id":ak.local_index(assocs_unzipped.tsCLUE3D_simToReco_SC, axis=1),
@@ -127,10 +127,10 @@ def assocs_zip_recoToSimMerged(assocs_unzipped:ak.Array, simVariant:Literal["CP"
     """
     if simVariant == "CP":
         return ak.zip({
-            "ts_id":ak.local_index(assocs_unzipped.tracksterLinksBarrel_recoToSim_CP_byLCs, axis=1),
-            "caloparticle_id":assocs_unzipped.tracksterLinksBarrel_recoToSim_CP_byLCs,
-            "score":assocs_unzipped.tracksterLinksBarrel_recoToSim_CP_byLCs_score,
-            "sharedE":assocs_unzipped.tracksterLinksBarrel_recoToSim_CP_byLCs_sharedE})  
+            "ts_id":ak.local_index(assocs_unzipped.ticlTrackstersLinksBarrel_recoToSim_CP, axis=1),
+            "caloparticle_id":assocs_unzipped.ticlTrackstersLinksBarrel_recoToSim_CP,
+            "score":assocs_unzipped.ticlTrackstersLinksBarrel_recoToSim_CP_score,
+            "sharedE":assocs_unzipped.ticlTrackstersLinksBarrel_recoToSim_CP_sharedE})  
     elif simVariant == "SC":
         return ak.zip({
             "ts_id":ak.local_index(assocs_unzipped.tsCLUE3D_recoToSim_SC, axis=1),
@@ -162,10 +162,10 @@ def assocs_zip_recoMergedToSim(assocs_unzipped:ak.Array, simVariant:Literal["CP"
     """
     if simVariant == "CP":
         return ak.zip({
-            "ts_id":ak.local_index(assocs_unzipped.tracksterLinksBarrel_recoToSim_CP_byLCs, axis=1),
-            "caloparticle_id":assocs_unzipped.tracksterLinksBarrel_recoToSim_CP_byLCs,
-            "score":assocs_unzipped.tracksterLinksBarrel_recoToSim_CP_byLCs_score,
-            "sharedE":assocs_unzipped.tracksterLinksBarrel_recoToSim_CP__byLCs_sharedE})  
+            "ts_id":ak.local_index(assocs_unzipped.ticlTrackstersLinksBarrel_recoToSim_CP, axis=1),
+            "caloparticle_id":assocs_unzipped.ticlTrackstersLinksBarrel_recoToSim_CP,
+            "score":assocs_unzipped.ticlTrackstersLinksBarrel_recoToSim_CP_score,
+            "sharedE":assocs_unzipped.ticlTrackstersLinksBarrel_recoToSim_CP__byLCs_sharedE})  
     elif simVariant == "SC":
         return ak.zip({
             "ts_id":ak.local_index(assocs_unzipped.Mergetstracksters_recoToSim_SC, axis=1),
@@ -196,10 +196,10 @@ def assocs_zip_simToRecoMerged(assocs_unzipped:ak.Array, simVariant:Literal["CP"
     """
     if simVariant == "CP":
         return ak.zip({
-            "caloparticle_id":ak.local_index(assocs_unzipped.tracksterLinksBarrel_simToReco_CP_byLCs, axis=1),
-            "ts_id":assocs_unzipped.tracksterLinksBarrel_simToReco_CP_byLCs,
-            "score":assocs_unzipped.tracksterLinksBarrel_simToReco_CP_byLCs_score,
-            "sharedE":assocs_unzipped.tracksterLinksBarrel_simToReco_CP_byLCs_sharedE})
+            "caloparticle_id":ak.local_index(assocs_unzipped.ticlTrackstersLinksBarrel_simToReco_CP, axis=1),
+            "ts_id":assocs_unzipped.ticlTrackstersLinksBarrel_simToReco_CP,
+            "score":assocs_unzipped.ticlTrackstersLinksBarrel_simToReco_CP_score,
+            "sharedE":assocs_unzipped.ticlTrackstersLinksBarrel_simToReco_CP_sharedE})
     elif simVariant == "SC":
         return ak.zip({
             "simcluster_id":ak.local_index(assocs_unzipped.Mergetstracksters_simToReco_SC, axis=1),
